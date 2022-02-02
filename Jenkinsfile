@@ -77,7 +77,7 @@ pipeline {
         stage ("Docker Image") {
             steps {
                 script {
-                    if (BRANCH_NAME == "master") {
+                    if (BRANCH_NAME == "main") {
                         bat "dotnet publish -c Release -o ${registry}"
                     }
                 }
