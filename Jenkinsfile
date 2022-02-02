@@ -4,7 +4,7 @@ pipeline {
     environment {
         scannerHome = tool name: 'sonar_scanner_dotnet'
         username = 'gauravkaushal'
-        registry = 'gauravkaushal/app_gauravkaushal'
+        registry = 'app_gauravkaushal/app/gauravk'
     }
         
     stages {
@@ -16,11 +16,15 @@ pipeline {
         
         stage('Restore packages'){
             steps{
+                echo "Restore nuget package for - ${BRANCH_NAME} branch"
                 bat "dotnet restore ${workspace}\\nagp-devops-us.sln"
             }
         }
         
         stage('Start SonarQube Analysis'){
+            when {
+                branch "main"
+            }
             steps{
                 echo "Start SonarQube Analysis"
                 withSonarQubeEnv("Test_Sonar") {
@@ -31,13 +35,14 @@ pipeline {
         
         stage('Clean Build'){
             steps{
+                echo "Code clean for - ${BRANCH_NAME} branch"
                 bat "dotnet clean ${workspace}\\nagp-devops-us.sln"
             }
         }
         
-        stage('Build SOlution'){
+        stage('Build Solution'){
             steps{
-                bat "dotnet build ${workspace}\\nagp-devops-us.sln"
+                bat "dotnet build ${workspace}\\nagp-devops-us.sln -c Release"
             }
         }
         
@@ -48,10 +53,35 @@ pipeline {
         }
         
         stage('Stop SonarQube Analysis'){
+             when {
+                branch "main"
+            }
             steps{
                 withSonarQubeEnv("Test_Sonar"){
                     bat "dotnet sonarscanner end"
                 }
+            }
+        }
+        
+        stage ("Release artifact") {
+            when {
+                branch "development"
+            }
+
+            steps {
+                echo "Release artifact step"
+                bat "dotnet publish -c Release -o ${registry}"
+            }
+        }
+        
+        stage ("Docker Image") {
+            steps {
+                script {
+                    if (BRANCH_NAME == "main") {
+                        bat "dotnet publish -c Release -o ${registry}"
+                    }
+                }
+                bat "docker build -t i-${username}-${BRANCH_NAME}:${BUILD_NUMBER} --no-cache -f Dockerfile ."
             }
         }
     }
