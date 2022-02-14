@@ -5,6 +5,7 @@ pipeline {
         scannerHome = tool name: 'sonar_scanner_dotnet'
         username = 'gauravkaushal'
         registry = 'app_gauravkaushal/app/gauravk'
+        dockerHubRepo ='gauravkaushal/app_gauravkaushal'
     }
         
     stages {
@@ -82,6 +83,23 @@ pipeline {
                     }
                 }
                 bat "docker build -t i-${username}-${BRANCH_NAME}:${BUILD_NUMBER} --no-cache -f Dockerfile ."
+            }
+        }
+        
+        stage ("Docker image push") {
+            steps {
+                withDockerRegistry([ credentialsId: "dockergrv-tkn", url: "" ]) {
+                     bat "docker tag i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} ${dockerHubRepo}:i-${userName}-${BRANCH_NAME}-${BUILD_NUMBER}"
+                     bat "docker tag i-${userName}-${BRANCH_NAME}:${BUILD_NUMBER} ${dockerHubRepo}:i-${userName}-${BRANCH_NAME}-latest"
+                     bat "docker push ${dockerHubRepo}:i-${userName}-${BRANCH_NAME}-${BUILD_NUMBER}"
+                     bat "docker push ${dockerHubRepo}:i-${userName}-${BRANCH_NAME}-latest"
+                }
+            }
+        }
+        
+        stage ("Docker image deploy") {
+            steps {                
+                bat "docker run --name c-${userName}-${BRANCH_NAME} -d -p ${port}:80 ${dockerHubRepo}:i-${userName}-${BRANCH_NAME}-latest"
             }
         }
     }
